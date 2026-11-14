@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Higienizador FGTS — Stabilon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root[data-theme="dark"]{
+  --bg:#0b0d12;--bg2:#13161e;--bg3:#1a1e2a;--border:#1e2338;
+  --text:#e4e8f4;--text2:#6e7a9a;--text3:#343d5a;
+  --accent:#4f8ef7;--green:#1fd48a;--yellow:#f5a623;--red:#f05252;
+  --sidebar:#0f1118;--shadow:0 2px 16px rgba(0,0,0,.4);
+}
+:root[data-theme="light"]{
+  --bg:#f0f2f9;--bg2:#fff;--bg3:#f5f6fc;--border:#e0e4f0;
+  --text:#0f1120;--text2:#5a6280;--text3:#9aa0c0;
+  --accent:#3a7af4;--green:#0ea86e;--yellow:#c98a00;--red:#dc3535;
+  --sidebar:#fff;--shadow:0 2px 12px rgba(0,0,0,.07);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;transition:background .3s,color .3s;}
+
+.sidebar{width:220px;min-height:100vh;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:200;}
+.sb-logo{padding:22px 20px 18px;border-bottom:1px solid var(--border);}
+.sb-logo-txt{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;letter-spacing:-.3px;display:flex;align-items:center;gap:8px;}
+.sb-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:bl 2s infinite;}
+@keyframes bl{0%,100%{opacity:1;}50%{opacity:.3;}}
+.sb-sub{font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:.5px;text-transform:uppercase;}
+.sb-nav{flex:1;padding:16px 12px;}
+.sb-section{font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);padding:0 8px;margin-bottom:8px;margin-top:16px;}
+.sb-section:first-child{margin-top:0;}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;transition:all .2s;color:var(--text2);font-size:13px;font-weight:500;border:none;background:transparent;width:100%;text-align:left;font-family:'DM Sans',sans-serif;text-decoration:none;}
+.sb-item:hover{background:var(--bg3);color:var(--text);}
+.sb-item.active{background:var(--bg3);color:var(--text);}
+.sb-item.active .sb-ico{color:var(--accent);}
+.sb-ico{width:16px;text-align:center;font-size:14px;flex-shrink:0;}
+.sb-bottom{padding:12px;border-top:1px solid var(--border);}
+.sb-theme{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--text2);font-size:12px;font-weight:500;transition:all .2s;border:none;background:transparent;width:100%;font-family:'DM Sans',sans-serif;}
+.sb-theme:hover{background:var(--bg3);color:var(--text);}
+
+.content{margin-left:220px;flex:1;min-height:100vh;display:flex;flex-direction:column;}
+.topbar{padding:14px 28px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topbar-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;}
+.pbtn{background:var(--accent);border:none;border-radius:8px;padding:9px 18px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:inline-flex;align-items:center;gap:6px;transition:all .2s;}
+.pbtn:hover{opacity:.85;}
+.pbtn.busy{opacity:.6;pointer-events:none;}
+.pbtn.ghost{background:transparent;border:1px solid var(--border);color:var(--text2);}
+.pbtn.ghost:hover{color:var(--text);border-color:var(--accent);}
+.pbtn:disabled{opacity:.4;pointer-events:none;}
+.sp{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:rot .6s linear infinite;}
+@keyframes rot{to{transform:rotate(360deg);}}
+
+.main-area{padding:22px 28px;flex:1;max-width:1100px;}
+
+.banner{border-radius:10px;padding:13px 16px;font-size:12.5px;margin-bottom:18px;display:flex;gap:10px;align-items:flex-start;line-height:1.5;}
+.banner b{font-weight:700;}
+.banner.warn{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);color:var(--yellow);}
+.banner.info{background:rgba(79,142,247,.07);border:1px solid rgba(79,142,247,.2);color:var(--text2);}
+.banner.info b{color:var(--text);}
+
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:var(--shadow);margin-bottom:18px;}
+.panel h3{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:4px;}
+.panel .desc{font-size:11.5px;color:var(--text3);margin-bottom:16px;}
+
+.grid-opts{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.fld{display:flex;flex-direction:column;gap:6px;}
+.fld label{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text3);}
+.inp,select.inp{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;transition:border .2s;width:100%;}
+.inp:focus{border-color:var(--accent);}
+.chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;padding-top:22px;}
+.chk input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;}
+
+textarea.cpftxt{width:100%;min-height:150px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;color:var(--text);font-size:13px;font-family:'DM Sans',monospace;outline:none;resize:vertical;line-height:1.6;}
+textarea.cpftxt:focus{border-color:var(--accent);}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;}
+.count{font-size:11px;color:var(--text3);margin-left:auto;}
+.filelbl{font-size:12px;color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px dashed var(--border);border-radius:8px;transition:all .2s;}
+.filelbl:hover{border-color:var(--accent);color:var(--text);}
+
+.progress-wrap{display:none;margin-bottom:18px;}
+.progress-bar{height:8px;background:var(--bg3);border-radius:100px;overflow:hidden;border:1px solid var(--border);}
+.progress-fill{height:100%;width:0;background:var(--accent);transition:width .3s;}
+.progress-txt{font-size:11px;color:var(--text2);margin-top:7px;}
+
+.cgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+.scard{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:15px 16px;box-shadow:var(--shadow);}
+.scard:nth-child(1){border-top:2px solid var(--accent);}
+.scard:nth-child(2){border-top:2px solid var(--green);}
+.scard:nth-child(3){border-top:2px solid var(--yellow);}
+.scard:nth-child(4){border-top:2px solid var(--red);}
+.clbl{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:7px;}
+.cval{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;letter-spacing:-1px;line-height:1;}
+
+.tbl-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);}
+.tbl-top{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);}
+.tbl-top .search{flex:1;max-width:260px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 13px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;}
+.tbl-top .search:focus{border-color:var(--accent);}
+table{width:100%;border-collapse:collapse;}
+thead th{padding:9px 14px;text-align:left;font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border);}
+tbody tr{border-bottom:1px solid var(--border);}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:var(--bg3);}
+tbody td{padding:11px 14px;font-size:12.5px;vertical-align:middle;}
+.tc-num{color:var(--text3);font-size:11px;width:36px;}
+.mono{font-variant-numeric:tabular-nums;}
+.nome{font-weight:500;}
+.saldo{font-family:'Syne',sans-serif;font-weight:700;}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:100px;font-size:10px;font-weight:600;}
+.pill::before{content:'';width:4px;height:4px;border-radius:50%;}
+.pp{background:rgba(31,212,138,.1);color:var(--green);}.pp::before{background:var(--green);}
+.pw{background:rgba(245,166,35,.1);color:var(--yellow);}.pw::before{background:var(--yellow);}
+.pl{background:rgba(240,82,82,.1);color:var(--red);}.pl::before{background:var(--red);}
+.empty{padding:46px 20px;text-align:center;color:var(--text3);font-size:12.5px;}
+
+@media(max-width:860px){.grid-opts{grid-template-columns:1fr 1fr;}.cgrid{grid-template-columns:1fr 1fr;}}
+@media(max-width:768px){.sidebar{display:none;}.content{margin-left:0;}.main-area{padding:14px;}}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-txt"><div class="sb-dot"></div>Stabilon</div>
+    <div class="sb-sub">Ferramentas</div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section">Painéis</div>
+    <a class="sb-item" href="index.html"><span class="sb-ico">◱</span>Painel de Conversão</a>
+    <div class="sb-section">FGTS</div>
+    <a class="sb-item active" href="higienizador.html"><span class="sb-ico">⚡</span>Higienizador</a>
+  </nav>
+  <div class="sb-bottom">
+    <button class="sb-theme" onclick="toggleTheme()"><span id="tico">☀️</span><span id="ttxt">Modo claro</span></button>
+  </div>
+</aside>
+
+<div class="content">
+  <div class="topbar">
+    <div class="topbar-title">Higienizador FGTS</div>
+    <div>
+      <button class="pbtn ghost" id="btnXlsx" onclick="exportar('xlsx')" disabled>⬇ Excel</button>
+      <button class="pbtn ghost" id="btnCsv" onclick="exportar('csv')" disabled>⬇ CSV</button>
+    </div>
+  </div>
+
+  <div class="main-area">
+
+    <div class="banner warn" id="bannerCfg">
+      <span>⏳</span>
+      <div><b>Aguardando a API oficial da Lotus.</b> A ferramenta está pronta e no ar. Assim que a Lotus
+      liberar a API de parceiro e a chave, a gente cadastra <b>LOTUS_API_BASE</b> e <b>LOTUS_API_KEY</b>
+      na Vercel e as consultas passam a funcionar na hora. Até lá, o botão Consultar vai avisar que ainda não está configurada.</div>
+    </div>
+
+    <div class="banner info">
+      <span>🔒</span>
+      <div>Use apenas com CPFs de <b>clientes seus que autorizaram a consulta</b>. A ferramenta apenas
+      <b>consulta o saldo</b> — ela <b>não cria proposta</b>. Os dados não ficam salvos em lugar nenhum: tudo acontece na hora e some ao fechar a página.</div>
+    </div>
+
+    <div class="panel">
+      <h3>Parâmetros da consulta</h3>
+      <div class="desc">Valem para todos os CPFs do lote.</div>
+      <div class="grid-opts">
+        <div class="fld">
+          <label>Banco / Provider</label>
+          <select class="inp" id="provider">
+            <option value="CARTOS_V2">Cartos (CARTOS_V2)</option>
+            <option value="BMP">BMP</option>
+            <option value="PARANA_BANCO">Paraná Banco</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label>Parcelas</label>
+          <input class="inp" id="numberOfPeriods" type="number" min="1" max="60" value="12">
+        </div>
+        <div class="fld">
+          <label>Reserva (R$)</label>
+          <input class="inp" id="reservationAmount" type="number" min="0" step="10" value="50">
+        </div>
+        <label class="chk"><input type="checkbox" id="hasInsurance"> Com seguro</label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Lista de CPFs</h3>
+      <div class="desc">Um CPF por linha. Pode colar da planilha ou enviar um arquivo .txt / .csv.</div>
+      <textarea class="cpftxt" id="cpfs" placeholder="000.000.000-00&#10;111.111.111-11&#10;..." oninput="contar()"></textarea>
+      <div class="row">
+        <label class="filelbl">📎 Enviar arquivo
+          <input type="file" id="file" accept=".txt,.csv" style="display:none" onchange="lerArquivo(event)">
+        </label>
+        <button class="pbtn ghost" onclick="limpar()">Limpar</button>
+        <span class="count" id="count">0 CPFs</span>
+      </div>
+      <div class="row">
+        <button class="pbtn" id="btnGo" onclick="consultar()">⚡ Consultar</button>
+      </div>
+    </div>
+
+    <div class="progress-wrap" id="progWrap">
+      <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
+      <div class="progress-txt" id="progTxt"></div>
+    </div>
+
+    <div class="cgrid" id="cards" style="display:none">
+      <div class="scard"><div class="clbl">Consultados</div><div class="cval" id="cTot">0</div></div>
+      <div class="scard"><div class="clbl">Com saldo</div><div class="cval" style="color:var(--green)" id="cCom">0</div></div>
+      <div class="scard"><div class="clbl">Saldo somado</div><div class="cval" style="color:var(--yellow);font-size:19px" id="cSaldo">R$ 0</div></div>
+      <div class="scard"><div class="clbl">Sem saldo / erro</div><div class="cval" style="color:var(--red)" id="cErr">0</div></div>
+    </div>
+
+    <div class="tbl-wrap" id="tblWrap" style="display:none">
+      <div class="tbl-top">
+        <input class="search" id="search" placeholder="Buscar CPF, nome ou telefone..." oninput="render()">
+        <span class="count" id="tlbl"></span>
+      </div>
+      <div id="tbl"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const saved=localStorage.getItem('theme')||'dark';
+document.documentElement.setAttribute('data-theme',saved);
+if(saved==='light'){document.getElementById('tico').textContent='🌙';document.getElementById('ttxt').textContent='Modo escuro';}
+function toggleTheme(){
+  const d=document.documentElement.getAttribute('data-theme')==='dark';
+  document.documentElement.setAttribute('data-theme',d?'light':'dark');
+  document.getElementById('tico').textContent=d?'🌙':'☀️';
+  document.getElementById('ttxt').textContent=d?'Modo escuro':'Modo claro';
+  localStorage.setItem('theme',d?'light':'dark');
+}
+
+const R$=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
+const CHUNK=5; // CPFs por requisição ao servidor
+let resultados=[];
+
+function soDigitos(s){return String(s||'').replace(/\D/g,'');}
+function extrairCpfs(){
+  const raw=document.getElementById('cpfs').value.split(/[\s,;]+/);
+  const vistos=new Set(); const out=[];
+  raw.forEach(x=>{const d=soDigitos(x); if(d.length>=11){const c=d.slice(0,11); if(!vistos.has(c)){vistos.add(c);out.push(c);}}});
+  return out;
+}
+function fmtCpf(c){return c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');}
+function contar(){
+  const n=extrairCpfs().length;
+  document.getElementById('count').textContent=`${n} CPF${n!==1?'s':''}`;
+}
+function limpar(){document.getElementById('cpfs').value='';contar();}
+function lerArquivo(ev){
+  const f=ev.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const txt=e.target.result;
+    const atual=document.getElementById('cpfs').value.trim();
+    document.getElementById('cpfs').value=(atual?atual+'\n':'')+txt;
+    contar();
+  };
+  r.readAsText(f);
+  ev.target.value='';
+}
+
+async function consultar(){
+  const cpfs=extrairCpfs();
+  if(!cpfs.length){alert('Cole ao menos um CPF.');return;}
+
+  const btn=document.getElementById('btnGo');
+  btn.classList.add('busy');btn.innerHTML='<span class="sp"></span> Consultando';
+  resultados=[];
+  document.getElementById('cards').style.display='none';
+  document.getElementById('tblWrap').style.display='none';
+
+  const opts={
+    provider:document.getElementById('provider').value,
+    numberOfPeriods:+document.getElementById('numberOfPeriods').value||12,
+    reservationAmount:+document.getElementById('reservationAmount').value||50,
+    hasInsurance:document.getElementById('hasInsurance').checked,
+  };
+
+  const prog=document.getElementById('progWrap');prog.style.display='block';
+  let feito=0;
+
+  for(let i=0;i<cpfs.length;i+=CHUNK){
+    const lote=cpfs.slice(i,i+CHUNK);
+    try{
+      const r=await fetch('/api/lotus',{
+        method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({cpfs:lote,...opts})
+      });
+      const data=await r.json();
+
+      if(r.status===503 && data.configured===false){
+        prog.style.display='none';
+        btn.classList.remove('busy');btn.innerHTML='⚡ Consultar';
+        document.getElementById('bannerCfg').innerHTML=
+          '<span>⏳</span><div><b>Ainda não dá para consultar.</b> '+data.message+'</div>';
+        document.getElementById('bannerCfg').scrollIntoView({behavior:'smooth'});
+        return;
+      }
+      if(data.resultados){resultados.push(...data.resultados);}
+      else{lote.forEach(c=>resultados.push({cpf:c,status:'ERRO',saldo:0,nome:'',telefone:'',email:'',mensagem:data.error||'Resposta inválida'}));}
+    }catch(e){
+      lote.forEach(c=>resultados.push({cpf:c,status:'ERRO',saldo:0,nome:'',telefone:'',email:'',mensagem:e.message}));
+    }
+    feito+=lote.length;
+    const p=Math.round(feito/cpfs.length*100);
+    document.getElementById('progFill').style.width=p+'%';
+    document.getElementById('progTxt').textContent=`${feito} de ${cpfs.length} consultados (${p}%)`;
+    resumo();render();
+  }
+
+  setTimeout(()=>{prog.style.display='none';},800);
+  btn.classList.remove('busy');btn.innerHTML='⚡ Consultar';
+  document.getElementById('btnXlsx').disabled=false;
+  document.getElementById('btnCsv').disabled=false;
+}
+
+function temSaldo(x){return (x.status==='COMPLETED'||x.status==='SUCCESS'||!x.status) && x.saldo>0;}
+function resumo(){
+  document.getElementById('cards').style.display='grid';
+  const com=resultados.filter(temSaldo);
+  const soma=com.reduce((s,x)=>s+(x.saldo||0),0);
+  document.getElementById('cTot').textContent=resultados.length;
+  document.getElementById('cCom').textContent=com.length;
+  document.getElementById('cSaldo').textContent=R$(soma);
+  document.getElementById('cErr').textContent=resultados.length-com.length;
+}
+
+function statusPill(x){
+  if(temSaldo(x))return '<span class="pill pp">Com saldo</span>';
+  if(x.status==='ERRO')return '<span class="pill pl">Erro</span>';
+  return '<span class="pill pw">Sem saldo</span>';
+}
+function render(){
+  document.getElementById('tblWrap').style.display='block';
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  let data=resultados;
+  if(q)data=data.filter(x=>fmtCpf(x.cpf).includes(q)||x.cpf.includes(q)||(x.nome||'').toLowerCase().includes(q)||(x.telefone||'').includes(q));
+  document.getElementById('tlbl').textContent=`${data.length} registro${data.length!==1?'s':''}`;
+  if(!data.length){document.getElementById('tbl').innerHTML='<div class="empty">Nada para mostrar.</div>';return;}
+  const rows=data.map((x,i)=>`<tr>
+    <td class="tc-num">${i+1}</td>
+    <td class="mono">${fmtCpf(x.cpf)}</td>
+    <td class="nome">${x.nome||'—'}</td>
+    <td class="mono">${x.telefone||'—'}</td>
+    <td class="saldo" style="color:${temSaldo(x)?'var(--green)':'var(--text2)'}">${R$(x.saldo)}</td>
+    <td>${statusPill(x)}</td>
+    <td style="color:var(--text3);font-size:11px">${x.mensagem||''}</td>
+  </tr>`).join('');
+  document.getElementById('tbl').innerHTML=`<div style="overflow-x:auto"><table>
+    <thead><tr><th>#</th><th>CPF</th><th>Nome</th><th>Telefone</th><th>Saldo</th><th>Status</th><th>Mensagem</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+
+function exportar(tipo){
+  if(!resultados.length)return;
+  const linhas=resultados.map(x=>({
+    CPF:fmtCpf(x.cpf),NOME:x.nome||'',TELEFONE:x.telefone||'',EMAIL:x.email||'',
+    SALDO:x.saldo||0,STATUS:temSaldo(x)?'COM SALDO':(x.status==='ERRO'?'ERRO':'SEM SALDO'),MENSAGEM:x.mensagem||''
+  }));
+  const ws=XLSX.utils.json_to_sheet(linhas);
+  const nome=`higienizacao-fgts-${new Date().toISOString().slice(0,10)}`;
+  if(tipo==='csv'){
+    const csv=XLSX.utils.sheet_to_csv(ws,{FS:';'});
+    baixar(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}),nome+'.csv');
+  }else{
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'FGTS');
+    XLSX.writeFile(wb,nome+'.xlsx');
+  }
+}
+function baixar(blob,nome){
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nome;a.click();URL.revokeObjectURL(a.href);
+}
+</script>
+</body>
+</html>
