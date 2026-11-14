@@ -61,6 +61,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .banner.info{background:rgba(79,142,247,.07);border:1px solid rgba(79,142,247,.2);color:var(--text2);}
 .banner.info b{color:var(--text);}
 
+.modetabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.modetab{background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:10px 16px;color:var(--text2);font-size:12.5px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;}
+.modetab:hover{color:var(--text);}
+.modetab.active{background:var(--bg3);color:var(--text);border-color:var(--accent);}
+.dropzone{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:34px 20px;border:2px dashed var(--border);border-radius:10px;cursor:pointer;transition:all .2s;color:var(--text2);font-size:13px;}
+.dropzone:hover,.dropzone.drag{border-color:var(--accent);background:var(--bg3);color:var(--text);}
+
 .panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:var(--shadow);margin-bottom:18px;}
 .panel h3{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:4px;}
 .panel .desc{font-size:11.5px;color:var(--text3);margin-bottom:16px;}
@@ -148,17 +155,41 @@ tbody td{padding:11px 14px;font-size:12.5px;vertical-align:middle;}
 
   <div class="main-area">
 
-    <div class="banner warn" id="bannerCfg">
-      <span>⏳</span>
-      <div><b>Aguardando a API oficial da Lotus.</b> A ferramenta está pronta e no ar. Assim que a Lotus
-      liberar a API de parceiro e a chave, a gente cadastra <b>LOTUS_API_BASE</b> e <b>LOTUS_API_KEY</b>
-      na Vercel e as consultas passam a funcionar na hora. Até lá, o botão Consultar vai avisar que ainda não está configurada.</div>
+    <div class="modetabs">
+      <button class="modetab active" id="mt-import" onclick="setMode('import')">📥 Importar planilha do painel · funciona agora</button>
+      <button class="modetab" id="mt-api" onclick="setMode('api')">⚡ Consultar pela API oficial · em breve</button>
     </div>
 
     <div class="banner info">
       <span>🔒</span>
       <div>Use apenas com CPFs de <b>clientes seus que autorizaram a consulta</b>. A ferramenta apenas
-      <b>consulta o saldo</b> — ela <b>não cria proposta</b>. Os dados não ficam salvos em lugar nenhum: tudo acontece na hora e some ao fechar a página.</div>
+      <b>organiza e limpa</b> os resultados — ela <b>não cria proposta</b>. Nada fica salvo: tudo acontece no seu navegador e some ao fechar a página.</div>
+    </div>
+
+    <!-- ===== MODO IMPORTAR (funciona hoje) ===== -->
+    <div id="modeImport">
+      <div class="panel">
+        <h3>Importar planilha do painel da Lotus</h3>
+        <div class="desc">Faça a consulta em lote no painel da Lotus, exporte o resultado (Excel ou CSV) e solte o arquivo aqui. O higienizador separa quem tem saldo, remove duplicados e formata a lista.</div>
+        <label class="dropzone" id="dz">
+          <input type="file" id="fileImp" accept=".xlsx,.xls,.csv" style="display:none" onchange="importarPlanilha(event)">
+          <div style="font-size:26px;margin-bottom:8px">📄</div>
+          <div><b>Clique para escolher</b> ou arraste o arquivo (.xlsx / .csv)</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:6px">A ferramenta reconhece sozinha as colunas CPF, Nome, Telefone, Saldo e Status.</div>
+        </label>
+        <div class="row" id="impMap" style="display:none">
+          <span class="count" id="impInfo"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODO API OFICIAL (em breve) ===== -->
+    <div id="modeApi" style="display:none">
+    <div class="banner warn" id="bannerCfg">
+      <span>⏳</span>
+      <div><b>Aguardando a API oficial da Lotus.</b> A ferramenta está pronta e no ar. Assim que a Lotus
+      liberar a API de parceiro e a chave, a gente cadastra <b>LOTUS_API_BASE</b> e <b>LOTUS_API_KEY</b>
+      na Vercel e as consultas passam a funcionar na hora. Até lá, o botão Consultar vai avisar que ainda não está configurada.</div>
     </div>
 
     <div class="panel">
@@ -200,6 +231,7 @@ tbody td{padding:11px 14px;font-size:12.5px;vertical-align:middle;}
         <button class="pbtn" id="btnGo" onclick="consultar()">⚡ Consultar</button>
       </div>
     </div>
+    </div><!-- /modeApi -->
 
     <div class="progress-wrap" id="progWrap">
       <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
@@ -239,6 +271,91 @@ function toggleTheme(){
 const R$=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
 const CHUNK=5; // CPFs por requisição ao servidor
 let resultados=[];
+
+// ===== Alternância de modo =====
+function setMode(m){
+  document.getElementById('modeImport').style.display=m==='import'?'block':'none';
+  document.getElementById('modeApi').style.display=m==='api'?'block':'none';
+  document.getElementById('mt-import').classList.toggle('active',m==='import');
+  document.getElementById('mt-api').classList.toggle('active',m==='api');
+}
+
+// ===== Modo importar planilha do painel =====
+function norm(s){return String(s||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+function parseSaldo(v){
+  if(typeof v==='number')return v;
+  let s=String(v||'').replace(/[^\d,.-]/g,'');
+  if(s.indexOf(',')>-1){s=s.replace(/\./g,'').replace(',','.');} // formato BR
+  return Number(s)||0;
+}
+function acharCol(headers,regexes){
+  for(const re of regexes){
+    const i=headers.findIndex(h=>re.test(h));
+    if(i>-1)return i;
+  }
+  return -1;
+}
+function importarPlanilha(ev){
+  const f=ev.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const linhas=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(!linhas.length){alert('Planilha vazia.');return;}
+      const headers=linhas[0].map(norm);
+      const iCpf=acharCol(headers,[/\bCPF\b/,/CPF/,/DOCUMENTO/]);
+      const iNome=acharCol(headers,[/^NOME/,/CLIENTE/,/\bNAME\b/]);
+      const iFone=acharCol(headers,[/TELEFONE/,/CELULAR/,/\bFONE\b/,/WHATS/,/PHONE/]);
+      const iSaldo=acharCol(headers,[/SALDO/,/LIBER/,/VALOR/,/TOTAL/]);
+      const iEmail=acharCol(headers,[/E.?MAIL/]);
+      const iStatus=acharCol(headers,[/STATUS/,/SITUAC/]);
+      const iMsg=acharCol(headers,[/MENSAGEM/,/OBSERV/,/MOTIVO/]);
+      if(iCpf<0){alert('Não encontrei uma coluna de CPF na planilha. Confira o arquivo.');return;}
+      resultados=[];
+      const vistos=new Set();
+      for(let i=1;i<linhas.length;i++){
+        const row=linhas[i];
+        const cpf=soDigitos(row[iCpf]).slice(0,11);
+        if(cpf.length<11)continue;
+        if(vistos.has(cpf))continue; vistos.add(cpf);
+        const saldo=iSaldo>-1?parseSaldo(row[iSaldo]):0;
+        resultados.push({
+          cpf,
+          nome:iNome>-1?String(row[iNome]||'').trim():'',
+          telefone:iFone>-1?String(row[iFone]||'').trim():'',
+          email:iEmail>-1?String(row[iEmail]||'').trim():'',
+          saldo,
+          status:iStatus>-1&&row[iStatus]?String(row[iStatus]).trim().toUpperCase():(saldo>0?'COMPLETED':'SEM SALDO'),
+          mensagem:iMsg>-1?String(row[iMsg]||'').trim():'',
+        });
+      }
+      if(!resultados.length){alert('Não encontrei CPFs válidos nas linhas da planilha.');return;}
+      document.getElementById('impMap').style.display='flex';
+      document.getElementById('impInfo').textContent=
+        `${resultados.length} CPFs importados · colunas: CPF${iNome>-1?', Nome':''}${iFone>-1?', Telefone':''}${iSaldo>-1?', Saldo':''}`;
+      resumo();render();
+      document.getElementById('btnXlsx').disabled=false;
+      document.getElementById('btnCsv').disabled=false;
+      document.getElementById('cards').scrollIntoView({behavior:'smooth'});
+    }catch(err){alert('Não consegui ler o arquivo: '+err.message);}
+  };
+  r.readAsArrayBuffer(f);
+  ev.target.value='';
+}
+// Arrastar e soltar
+window.addEventListener('DOMContentLoaded',()=>{
+  const dz=document.getElementById('dz'); if(!dz)return;
+  ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('drag');}));
+  ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('drag');}));
+  dz.addEventListener('drop',e=>{
+    const f=e.dataTransfer.files[0]; if(!f)return;
+    const inp=document.getElementById('fileImp');
+    const dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files;
+    importarPlanilha({target:inp});
+  });
+});
 
 function soDigitos(s){return String(s||'').replace(/\D/g,'');}
 function extrairCpfs(){
@@ -321,7 +438,7 @@ async function consultar(){
   document.getElementById('btnCsv').disabled=false;
 }
 
-function temSaldo(x){return (x.status==='COMPLETED'||x.status==='SUCCESS'||!x.status) && x.saldo>0;}
+function temSaldo(x){return x.saldo>0 && !/ERR|FALH|INVAL/.test(String(x.status||'').toUpperCase());}
 function resumo(){
   document.getElementById('cards').style.display='grid';
   const com=resultados.filter(temSaldo);
